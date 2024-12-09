@@ -1,0 +1,269 @@
+/* Estilo General */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f7f9fc;
+    color: #333;
+}
+
+h1, h2 {
+    color: #1a73e8;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+}
+
+/* Contenedor Principal */
+div {
+    margin: 20px auto;
+    max-width: 800px;
+    padding: 20px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Formularios */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+label {
+    font-weight: bold;
+    color: #444;
+}
+
+input, button {
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+}
+
+input:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 4px rgba(26, 115, 232, 0.5);
+}
+
+button {
+    background-color: #1a73e8;
+    color: white;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #135ba1;
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #1a73e8;
+    color: white;
+    text-transform: uppercase;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Mensajes de Error */
+p {
+    text-align: center;
+}
+
+p[style*="color: red"] {
+    font-weight: bold;
+    background-color: #ffefef;
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    border-radius: 5px;
+    color: #d9534f;
+}
+
+/* Mensajes de Éxito */
+pre {
+    background-color: #e6ffed;
+    border: 1px solid #b5e6c1;
+    padding: 10px;
+    border-radius: 5px;
+    color: #2b7a0b;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Ajustes para Móviles */
+@media (max-width: 768px) {
+    div {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    input, button {
+        font-size: 0.9rem;
+    }
+}
+
+/* Contenedor del listado */
+.contenedor-departamentos {
+    text-align: center;
+}
+
+/* Lista de departamentos */
+.lista-departamentos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.lista-departamentos li {
+    margin: 10px 0;
+}
+
+.enlace-departamento {
+    text-decoration: none;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #1a73e8;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.enlace-departamento:hover {
+    color: #135ba1;
+    text-shadow: 0 0 8px rgba(26, 115, 232, 0.5);
+}
+
+/* Mensaje de error */
+.mensaje-error {
+    font-weight: bold;
+    color: #d9534f;
+    background-color: #ffefef;
+    border: 1px solid #ffcccc;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/*DASHBOARD*/
+
+/* styles.css */
+
+/* Contenedor principal */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #007bff;
+    padding: 10px;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Contenedor del Dashboard */
+.dashboard-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Títulos */
+h1, h2 {
+    color: #007bff;
+    text-align: center;
+}
+
+h1 {
+    font-size: 32px;
+}
+
+h2 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+/* Texto de bienvenida */
+p {
+    text-align: center;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Botones */
+.dash {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.dash li {
+    margin: 0;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Opciones del Usuario o Administrador */
+.admin-options, .user-options {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
