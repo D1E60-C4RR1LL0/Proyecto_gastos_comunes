@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
-from datetime import datetime, time
+import calendar
+from datetime import datetime, timedelta
 from .models import db, Acceso, Propietario, Arrendatario, Personal, Departamento, CuotaGC, Reclamo, Proyecto, ProyectoDepto, Cargo, TipoReclamo, Edificio
 
 # Definir el Blueprint para las rutas
@@ -742,13 +743,14 @@ def generar_gastos_por_periodo():
         data = request.get_json()
 
         # Validar campos obligatorios
-        required_fields = ["Mes", "Año", "Monto"]
+        required_fields = ["Año", "Monto"]
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:
             return jsonify({"error": f"Faltan campos requeridos: {', '.join(missing_fields)}"}), 400
 
         # Filtros opcionales
         cod_depto = data.get("CodDepto")  # Para un departamento específico (opcional)
+        mes = data.get("Mes")  # Mes opcional
 
         if cod_depto:
             departamentos = Departamento.query.filter_by(Numero=cod_depto).all()
@@ -758,33 +760,77 @@ def generar_gastos_por_periodo():
         if not departamentos:
             return jsonify({"error": "No se encontraron departamentos"}), 404
 
-        # Crear las cuotas
         cuotas_generadas = []
-        for depto in departamentos:
-            nueva_cuota = CuotaGC(
-                CodDepto=depto.Numero,
-                Mes=data["Mes"],
-                Año=data["Año"],
-                ValorCobrado=data["Monto"],
-                ValorPagado=0.0,
-                Estado="Pendiente"
-            )
-            db.session.add(nueva_cuota)
-            cuotas_generadas.append({
-                "CodDepto": depto.Numero,
-                "Mes": data["Mes"],
-                "Año": data["Año"],
-                "Monto": data["Monto"],
-                "Estado": "Pendiente"
-            })
+        # Si se especifica un mes, solo generar para ese mes
+        if mes:
+            # Verificar si ya existen cuotas para el mes y año
+            cuotas_existentes = CuotaGC.query.filter_by(Mes=mes, Año=data["Año"]).all()
 
+            # Si CodDepto es específico, verificar solo para ese departamento
+            if cod_depto:
+                cuotas_existentes = [
+                    cuota for cuota in cuotas_existentes if cuota.CodDepto == cod_depto
+                ]
+
+            if cuotas_existentes:
+                return jsonify({"error": "Ya existen gastos comunes para el mes y año especificados"}), 409
+
+            # Crear cuotas para el mes especificado
+            for depto in departamentos:
+                nueva_cuota = CuotaGC(
+                    CodDepto=depto.Numero,
+                    Mes=mes,
+                    Año=data["Año"],
+                    ValorCobrado=data["Monto"],
+                    ValorPagado=0.0,
+                    Estado="Pendiente"
+                )
+                db.session.add(nueva_cuota)
+                cuotas_generadas.append({
+                    "CodDepto": depto.Numero,
+                    "Mes": mes,
+                    "Año": data["Año"],
+                    "Monto": data["Monto"],
+                    "Estado": "Pendiente"
+                })
+        else:
+            # Generar cuotas para todos los meses del año
+            for mes_anual in range(1, 13):  # Meses de enero (1) a diciembre (12)
+                for depto in departamentos:
+                    # Verificar si ya existe una cuota para el mes actual
+                    cuota_existente = CuotaGC.query.filter_by(
+                        CodDepto=depto.Numero, Mes=mes_anual, Año=data["Año"]
+                    ).first()
+
+                    if not cuota_existente:
+                        nueva_cuota = CuotaGC(
+                            CodDepto=depto.Numero,
+                            Mes=mes_anual,
+                            Año=data["Año"],
+                            ValorCobrado=data["Monto"],
+                            ValorPagado=0.0,
+                            Estado="Pendiente"
+                        )
+                        db.session.add(nueva_cuota)
+                        cuotas_generadas.append({
+                            "CodDepto": depto.Numero,
+                            "Mes": mes_anual,
+                            "Año": data["Año"],
+                            "Monto": data["Monto"],
+                            "Estado": "Pendiente"
+                        })
+
+        # Guardar los cambios
         db.session.commit()
-        return jsonify({"message": "Gastos comunes generados con éxito", "cuotas": cuotas_generadas}), 201
+
+        return jsonify({
+            "message": "Gastos comunes generados con éxito",
+            "cuotas": cuotas_generadas
+        }), 201
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
 
 
 @main.route('/mis_gastos_comunes', methods=['GET'])
@@ -867,33 +913,53 @@ def get_cuotas_by_departamento(CodDepto):
 @main.route('/cuotasgc/pendientes', methods=['GET'])
 def get_cuotas_pendientes():
     try:
+        # Obtener los parámetros
         hasta_mes = request.args.get('hasta_mes', type=int)
         hasta_año = request.args.get('hasta_año', type=int)
 
-        if not hasta_mes or not hasta_año:
-            return jsonify({"error": "Faltan los parámetros 'hasta_mes' y 'hasta_año'"}), 400
+        # Validar que el año esté presente
+        if not hasta_año:
+            return jsonify({"error": "El parámetro 'hasta_año' es obligatorio"}), 400
 
-        pendientes = CuotaGC.query.filter(
-            CuotaGC.ValorPagado == 0,
-            (CuotaGC.Año < hasta_año) | 
-            ((CuotaGC.Año == hasta_año) & (CuotaGC.Mes <= hasta_mes))
-        ).order_by(CuotaGC.Año.asc(), CuotaGC.Mes.asc()).all()
+        # Construir la consulta base
+        query = CuotaGC.query.filter(
+            CuotaGC.Estado == "Pendiente"  # Solo incluir pendientes
+        )
 
+        # Filtrar por año y mes
+        if hasta_mes:
+            query = query.filter(
+                (CuotaGC.Año < hasta_año) | 
+                ((CuotaGC.Año == hasta_año) & (CuotaGC.Mes <= hasta_mes))
+            )
+        else:
+            query = query.filter(CuotaGC.Año <= hasta_año)
+
+        # Ordenar cronológicamente
+        pendientes = query.order_by(CuotaGC.Año.asc(), CuotaGC.Mes.asc()).all()
+
+        # Verificar si hay datos
         if not pendientes:
             return jsonify({"mensaje": "No hay cuotas pendientes"}), 200
 
-        return jsonify([{
-            "IdCuotaGC": cuota.IdCuotaGC,
-            "CodDepto": cuota.CodDepto,
-            "Mes": cuota.Mes,
-            "Año": cuota.Año,
-            "ValorPagado": cuota.ValorPagado,
-            "Atrasado": cuota.Atrasado,
-            "Estado": cuota.Estado  
-        } for cuota in pendientes]), 200
+        # Formatear la respuesta
+        return jsonify([
+            {
+                "IdCuotaGC": cuota.IdCuotaGC,
+                "CodDepto": cuota.CodDepto,
+                "Mes": cuota.Mes,
+                "Año": cuota.Año,
+                "ValorCobrado": cuota.ValorCobrado,
+                "ValorPagado": cuota.ValorPagado,
+                "Estado": cuota.Estado,
+                "Atrasado": cuota.Atrasado
+            } for cuota in pendientes
+        ]), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 @main.route('/cuotasgc', methods=['GET'])
@@ -958,53 +1024,89 @@ def buscar_cuota():
         return jsonify({"error": str(e)}), 500
 
 
+
 @main.route('/cuotasgc/editar', methods=['PUT'])
 def editar_cuota():
     try:
-        # Obtener los parámetros de la solicitud
-        cod_depto = request.args.get('CodDepto', type=int)
-        mes = request.args.get('Mes', type=int)
-        año = request.args.get('Año', type=int)
+        # Verifica que el contenido sea JSON
+        if not request.is_json:
+            return jsonify({"error": "El contenido debe ser JSON"}), 400
 
-        # Validar que los parámetros requeridos estén presentes
-        if not cod_depto or not mes or not año:
-            return jsonify({"error": "Faltan parámetros requeridos: CodDepto, Mes, Año"}), 400
+        # Obtén los datos del cuerpo de la solicitud
+        data = request.json
+        cod_depto = data.get('CodDepto')
+        mes = data.get('Mes')
+        año = data.get('Año')
+        valor_pagado = data.get('ValorPagado')
+        fecha_pago = data.get('FechaPago')  # Formato esperado: "YYYY-MM-DD"
+
+        # Validar que los parámetros estén presentes
+        if not cod_depto or not mes or not año or valor_pagado is None:
+            return jsonify({"error": "Faltan parámetros requeridos: CodDepto, Mes, Año, ValorPagado"}), 400
+
+        # Validar el formato de FechaPago
+        if fecha_pago:
+            try:
+                fecha_pago_obj = datetime.strptime(fecha_pago, '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({"error": "El formato de FechaPago debe ser YYYY-MM-DD"}), 400
+        else:
+            fecha_pago_obj = None
 
         # Buscar la cuota en la base de datos
         cuota = CuotaGC.query.filter_by(CodDepto=cod_depto, Mes=mes, Año=año).first()
-
-        # Verificar si la cuota fue encontrada
         if not cuota:
             return jsonify({"error": "No se encontró una cuota para los criterios proporcionados"}), 404
 
-        # Obtener los datos enviados en el cuerpo de la solicitud
-        data = request.get_json()
+        # Verificar si el pago excede el monto cobrado
+        if cuota.ValorPagado + valor_pagado > cuota.ValorCobrado:
+            return jsonify({
+                "error": f"El valor pagado excede el monto cobrado. Puede abonar un máximo de {cuota.ValorCobrado - cuota.ValorPagado}."
+            }), 400
 
-        # Validar y actualizar los campos permitidos
-        campos_actualizables = ["ValorPagado", "FechaPago", "Atrasado", "Estado"]
-        for key, value in data.items():
-            if key in campos_actualizables:
-                setattr(cuota, key, value)
+        # Calcular la fecha límite (último día del mes - 1 día)
+        _, last_day_of_month = calendar.monthrange(año, mes)
+        fecha_limite = datetime(año, mes, last_day_of_month).date() - timedelta(days=1)
 
-        # Guardar los cambios en la base de datos
+        # Actualizar el valor pagado
+        cuota.ValorPagado += valor_pagado
+
+        # Actualizar el estado de la cuota y el campo Atrasado
+        if cuota.ValorPagado == cuota.ValorCobrado:
+            if fecha_pago_obj and fecha_pago_obj <= fecha_limite:
+                cuota.Estado = 'Pagado'  # Dentro del plazo
+                cuota.Atrasado = False
+            else:
+                cuota.Estado = 'Pagado fuera de plazo'  # Fuera del plazo
+                cuota.Atrasado = True
+            cuota.FechaPago = fecha_pago_obj  # Actualizar la fecha de pago
+        else:
+            cuota.Estado = 'Pendiente'
+            cuota.Atrasado = fecha_pago_obj > fecha_limite if fecha_pago_obj else True
+
+        # Guardar los cambios
         db.session.commit()
 
-        # Construir la respuesta en formato JSON
-        resultado = {
-            "IdCuotaGC": cuota.IdCuotaGC,
-            "CodDepto": cuota.CodDepto,
-            "Mes": cuota.Mes,
-            "Año": cuota.Año,
-            "ValorPagado": cuota.ValorPagado,
-            "FechaPago": cuota.FechaPago.strftime('%Y-%m-%d') if cuota.FechaPago else None,
-            "Atrasado": cuota.Atrasado,
-            "Estado": cuota.Estado
-        }
-        return jsonify({"message": "Cuota actualizada con éxito", "cuota": resultado}), 200
+        return jsonify({
+            "message": "Pago registrado con éxito",
+            "cuota": {
+                "CodDepto": cuota.CodDepto,
+                "Mes": cuota.Mes,
+                "Año": cuota.Año,
+                "ValorCobrado": cuota.ValorCobrado,
+                "ValorPagado": cuota.ValorPagado,
+                "Estado": cuota.Estado,
+                "Atrasado": cuota.Atrasado,
+                "FechaPago": cuota.FechaPago.strftime('%Y-%m-%d') if cuota.FechaPago else None,
+                "FechaLimite": fecha_limite.strftime('%Y-%m-%d')
+            }
+        }), 200
 
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
 
 
 # --- RECLAMOS ---
@@ -1491,36 +1593,39 @@ def listar_usuarios():
 @main.route('/departamentos', methods=['GET'])
 def listar_departamentos():
     try:
-        # Obtén el parámetro opcional 'arrendado'
-        arrendado = request.args.get('arrendado')
-
-        # Si el parámetro no está presente, devuelve todos los departamentos
-        if arrendado is None:
-            departamentos = Departamento.query.all()
-        else:
-            # Si el parámetro está presente, valida y filtra
-            if arrendado.lower() not in ['true', 'false']:
-                return jsonify({"error": "El parámetro 'arrendado' debe ser 'true' o 'false'"}), 400
-            arrendado = arrendado.lower() == 'true'
-            departamentos = Departamento.query.filter_by(Arrendado=arrendado).all()
-
-        # Verifica si hay departamentos en la base de datos
-        if not departamentos:
-            return jsonify({"mensaje": "No se encontraron departamentos"}), 404
-
-        # Devuelve los departamentos en formato JSON
-        return jsonify([{
-            "Numero": depto.Numero,
-            "Piso": depto.Piso,
-            "Arrendado": depto.Arrendado,
-            "Estado": depto.Estado,
-            "Observacion": depto.Observacion
-        } for depto in departamentos]), 200
-
+        departamentos = Departamento.query.all()
+        lista_departamentos = [{"Numero": depto.Numero} for depto in departamentos]
+        return jsonify(lista_departamentos), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@main.route('/departamentos/<int:cod_depto>/gastos', methods=['GET'])
+def listar_gastos_por_departamento(cod_depto):
+    try:
+        # Busca los gastos comunes del departamento especificado
+        gastos = CuotaGC.query.filter_by(CodDepto=cod_depto).all()
 
+        # Si no hay gastos registrados
+        if not gastos:
+            return jsonify({"message": "No se encontraron gastos para este departamento"}), 404
+
+        # Formatea los datos para la respuesta
+        lista_gastos = [
+            {
+                "Mes": gasto.Mes,
+                "Año": gasto.Año,
+                "ValorCobrado": gasto.ValorCobrado,
+                "ValorPagado": gasto.ValorPagado,
+                "Estado": gasto.Estado,
+                "FechaPago": gasto.FechaPago.strftime('%Y-%m-%d') if gasto.FechaPago else None,
+            }
+            for gasto in gastos
+        ]
+
+        return jsonify(lista_gastos), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @main.route('/asociar_departamento', methods=['POST'])
