@@ -23,75 +23,58 @@ function DashboardPage() {
     }
 
     return (
-        <div style={{ padding: '20px' }}>
-            <Navbar />
-            <h1>Dashboard</h1>
-            <p>Bienvenido, {user?.username || 'Usuario'}</p>
-            <p>Rol: {user?.Tipo || 'N/A'}</p>
+        <div className="dashboard-container">
+    <Navbar />
+    <h1>Dashboard</h1>
+    <p>Bienvenido, {user?.username || 'Usuario'}</p>
+    <p>Rol: {user?.Tipo || 'N/A'}</p>
 
-            {/* Opciones para Administrador */}
-            {user?.Tipo === 'Administrador' && (
-                <div>
-                    <h2>Opciones de Administrador</h2>
-                    <ul>
-                        <li>
-                            <button onClick={() => navigate('/gestion-usuarios-departamentos')}>
-                                Gestionar Usuarios
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/review-claims')}>
-                                Revisar Reclamos
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/reports')}>
-                                Ver Informes
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/generar-gastos-comunes')}>
-                                Generar Gastos Comunes
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/lista-departamentos')}>
-                                Pagar Gastos Comunes
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/mis-gastos-comunes')}>
-                                Gastos pendientes
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            )}
-
-            {/* Opciones para Usuario */}
-            {user?.Tipo === 'Usuario' && (
-                <div>
-                    <h2>Opciones del Usuario</h2>
-                    <ul>
-                        <li>
-                            <button onClick={() => navigate('/payments')}>
-                                Mis Pagos
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/claims')}>
-                                Reclamos
-                            </button>
-                        </li>
-                        <li>
-                            <button onClick={() => navigate('/profile')}>
-                                Perfil
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-            )}
+    {user?.Tipo === 'Administrador' && (
+        <div className="admin-options">
+            <h2>Opciones de Administrador</h2>
+            <ul className="dash">
+                <li>
+                    <button onClick={() => navigate('/generar-gastos-comunes')}>
+                        Generar Gastos Comunes
+                    </button>
+                </li>
+                <li>
+                    <button onClick={() => navigate('/lista-departamentos')}>
+                        Pagar Gastos Comunes
+                    </button>
+                </li>
+                <li>
+                    <button onClick={() => navigate('/mis-gastos-comunes')}>
+                        Gastos pendientes
+                    </button>
+                </li>
+            </ul>
         </div>
+    )}
+
+    {user?.Tipo === 'Usuario' && (
+        <div className="user-options">
+            <h2>Opciones del Usuario</h2>
+            <ul>
+                <li>
+                    <button onClick={() => navigate('/payments')}>
+                        Mis Pagos
+                    </button>
+                </li>
+                <li>
+                    <button onClick={() => navigate('/claims')}>
+                        Reclamos
+                    </button>
+                </li>
+                <li>
+                    <button onClick={() => navigate('/profile')}>
+                        Perfil
+                    </button>
+                </li>
+            </ul>
+        </div>
+    )}
+</div>
     );
 }
 

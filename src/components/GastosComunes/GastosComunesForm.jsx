@@ -59,7 +59,7 @@ const GastosComunesForm = () => {
                         type="number"
                         value={mes}
                         onChange={(e) => setMes(e.target.value)}
-                        placeholder="Dejar vacío para generar todo el año"
+                        placeholder="No llenar para todo el año"
                     />
                 </label>
                 <label>
@@ -87,7 +87,7 @@ const GastosComunesForm = () => {
                         type="number"
                         value={codDepto}
                         onChange={(e) => setCodDepto(e.target.value)}
-                        placeholder="Dejar vacío para todos los departamentos"
+                        placeholder="Dejar para todos los deptos"
                     />
                 </label>
                 <button type="submit">Generar</button>
